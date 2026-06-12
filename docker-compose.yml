@@ -23,6 +23,7 @@ services:
       MINIO_SECRET_KEY: minioadmin
       MINIO_SECURE: "false"
       MINIO_PROCESSED_BUCKET: processeddata
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://signoz-otel-collector:4317
     depends_on:
       - minio
     deploy:
@@ -33,6 +34,13 @@ services:
         reservations:
           cpus: "2"
           memory: 4G
+    networks:
+      - default
+      - signoz-net
 
 volumes:
   minio_data:
+
+networks:
+  signoz-net:
+    external: true
