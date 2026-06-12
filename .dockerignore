@@ -1,0 +1,25 @@
+# Environnement Python
+venv/
+__pycache__/
+*.pyc
+
+# Données et fichiers volumineux
+data/
+*.csv
+
+# Git
+.git/
+.gitignore
+
+# Fichiers temporaires
+output.json
+*.tmp
+
+# IDE
+.vscode/
+.idea/
+
+# Documentation et config (pas nécessaires dans l'image)
+README.md
+docker-compose.yml
+.dockerignore
