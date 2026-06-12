@@ -1,31 +1,51 @@
 from fastapi import APIRouter, HTTPException
 
-from src.core.schemas import ColumnsResponse
+from src.core.schemas import (
+    ColumnsResponse,
+    ProcessDateRequest,
+    ProcessDateResponse,
+)
 from src.core.columns_service import get_columns
+from src.core.process_service import process_date
 
 router = APIRouter()
 
 
 @router.get("/columns", response_model=ColumnsResponse)
 def list_columns(bucket: str, file: str):
-    """
-    Retourne la liste des colonnes d'un fichier stocké dans MinIO.
-
-    Paramètres :
-    - bucket : nom du bucket MinIO contenant le fichier
-    - file : chemin du fichier dans le bucket
-    """
     try:
         columns = get_columns(bucket, file)
         return ColumnsResponse(columns=columns)
 
     except FileNotFoundError as e:
-        # Fichier introuvable → erreur 404 explicite
         raise HTTPException(status_code=404, detail=str(e))
 
     except Exception as e:
-        # Toute autre erreur → 500 avec message clair
         raise HTTPException(
             status_code=500,
             detail=f"Erreur lors de la lecture des colonnes : {str(e)}",
+        )
+
+
+@router.post("/processDate", response_model=ProcessDateResponse)
+def process_date_endpoint(request: ProcessDateRequest):
+    try:
+        preview = process_date(
+            bucket=request.bucket,
+            file=request.file,
+            date_columns=request.date_columns,
+            date_formats=request.date_formats,
+        )
+        return ProcessDateResponse(status="success", preview=preview)
+
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erreur lors du traitement : {str(e)}",
         )
