@@ -1,0 +1,21 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+.env
+
+# Fichiers de test volumineux
+*.csv
+data/
+
+# Fichiers temporaires
+/tmp/
+output.json
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
