@@ -3,14 +3,36 @@ services:
     image: minio/minio:latest
     container_name: arteci-minio
     ports:
-      - "9000:9000"   # API MinIO
-      - "9001:9001"   # Console web
+      - "9000:9000"
+      - "9001:9001"
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
     command: server /data --console-address ":9001"
     volumes:
       - minio_data:/data
+
+  api:
+    build: .
+    container_name: arteci-api
+    ports:
+      - "8000:8000"
+    environment:
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_SECURE: "false"
+      MINIO_PROCESSED_BUCKET: processeddata
+    depends_on:
+      - minio
+    deploy:
+      resources:
+        limits:
+          cpus: "4"
+          memory: 8G
+        reservations:
+          cpus: "2"
+          memory: 4G
 
 volumes:
   minio_data:
