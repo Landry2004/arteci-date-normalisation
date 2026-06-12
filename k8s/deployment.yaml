@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: arteci-api
+  labels:
+    app: arteci-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: arteci-api
+  template:
+    metadata:
+      labels:
+        app: arteci-api
+    spec:
+      containers:
+        - name: arteci-api
+          image: landry225/arteci-api:latest
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: arteci-config
+          resources:
+            requests:
+              cpu: "2"
+              memory: "4Gi"
+            limits:
+              cpu: "4"
+              memory: "8Gi"
