@@ -12,6 +12,21 @@ services:
     volumes:
       - minio_data:/data
 
+  # Service d'initialisation : crée les buckets automatiquement
+  minio-init:
+    image: minio/mc:latest
+    container_name: arteci-minio-init
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      until (mc alias set local http://minio:9000 minioadmin minioadmin) do echo 'Attente de MinIO...'; sleep 2; done;
+      mc mb --ignore-existing local/raw;
+      mc mb --ignore-existing local/processeddata;
+      echo 'Buckets raw et processeddata prets';
+      exit 0;
+      "
+
   api:
     build: .
     container_name: arteci-api
@@ -34,13 +49,6 @@ services:
         reservations:
           cpus: "2"
           memory: 4G
-    networks:
-      - default
-      - signoz-net
 
 volumes:
   minio_data:
-
-networks:
-  signoz-net:
-    external: true
