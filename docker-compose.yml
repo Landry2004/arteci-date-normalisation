@@ -28,6 +28,7 @@ services:
 
   api:
     image: landry225/arteci-api:latest
+  # build: .
     container_name: arteci-api
     ports:
       - "8001:8000"
