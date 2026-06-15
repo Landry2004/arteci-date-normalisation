@@ -2,8 +2,7 @@
 
 API de standardisation des formats de date, développée dans le cadre du Challenge DevOps / Data Platform d'Artefact CI.
 
-Elle lit des fichiers CSV depuis MinIO, normalise les colonnes de dates vers un format unique (`JJ-MM-AAAA HH:mm:ss`), et réécrit le fichier traité dans un bucket dédié. Elle gère les formats hétérogènes (français, anglais, ISO) y compris mélangés au sein d'une même colonne.
-
+Elle récupère un fichier CSV depuis MinIO, normalise les colonnes de dates vers un format unique (`JJ-MM-AAAA HH:mm:ss`), puis réécrit le fichier traité en place (écrasement). Elle gère les formats hétérogènes (français, anglais, ISO) y compris mélangés au sein d'une même colonne.
 ---
 
 ## Sommaire
@@ -24,11 +23,14 @@ Elle lit des fichiers CSV depuis MinIO, normalise les colonnes de dates vers un 
 
 ## Architecture
 
-```
-Frontend → Bucket "raw" (MinIO) → API → Bucket "processeddata" (MinIO) → Aperçu (100 lignes)
-```
+Cette API intervient à la **fin** d'une chaîne de validation. En amont, un fichier brut est déposé dans le bucket `raw`, puis une première étape de traitement le copie dans le bucket `processeddata`. Cette API récupère alors le fichier intermédiaire dans `processeddata`, normalise les colonnes de dates demandées, et **réécrit (écrase) le fichier en place** dans ce même bucket. En réponse, elle retourne les 100 premières lignes traitées pour validation rapide.
 
-Le flux est simple : un fichier brut est déposé dans `raw`, l'API le télécharge, normalise les colonnes de dates demandées, puis réécrit le résultat dans `processeddata` avec le même nom. En réponse, elle retourne les 100 premières lignes traitées pour validation rapide.
+```
+Bucket "raw" → [étapes amont] → Bucket "processeddata" → API (normalise + écrase en place) → Aperçu (100 lignes)
+
+```
+Le principe d'écriture est : **quel que soit le bucket reçu en paramètre, le fichier est écrasé dans ce même bucket** (écriture en place). En pratique, le bucket reçu est `processeddata`.
+
 
 **Règles métier couvertes :**
 
@@ -120,14 +122,14 @@ curl http://localhost:8001/health
 
 ## Utilisation de l'API
 
-Avant tout traitement, déposer le fichier CSV dans le bucket `raw` via la console MinIO.
+Avant tout traitement, le fichier CSV doit être présent dans le bucket `processeddata` (déposé par les étapes amont). Pour tester l'API de façon autonome, on peut y déposer manuellement un fichier via la console MinIO.
 
 ### `GET /columns`
 
 Retourne la liste des colonnes d'un fichier.
 
 ```
-GET /columns?bucket=raw&file=mon_fichier.csv
+GET /columns?bucket=processeddata&file=mon_fichier.csv
 ```
 
 ```json
@@ -138,13 +140,13 @@ GET /columns?bucket=raw&file=mon_fichier.csv
 
 ### `POST /processDate`
 
-Normalise les colonnes de dates et réécrit le fichier dans `processeddata`.
+Normalise les colonnes de dates et réécrit (écrase) le fichier en place dans le bucket reçu.
 
 **Requête :**
 
 ```json
 {
-  "bucket": "raw",
+  "bucket": "processeddata",
   "file": "mon_fichier.csv",
   "date_columns": ["DATE_CREATION", "DATE_DESACTIVATION"],
   "date_formats": ["MDY", "MDY"]
@@ -166,6 +168,7 @@ Le fichier complet est dans `processeddata` ; l'aperçu (100 lignes) est là pou
 
 ---
 
+
 ## Observabilité
 
 Chaque requête `POST /processDate` génère une trace OpenTelemetry couvrant le cycle complet :
@@ -180,25 +183,15 @@ POST /processDate          ← la requête complète (du début à la fin)
 
 Des logs structurés (timestamp, niveau, contexte) accompagnent chaque étape.
 
-### Visualisation avec Signoz (optionnel)
+La stack Signoz complète (collecteur OpenTelemetry, ClickHouse, interface) est **intégrée directement dans le `docker-compose.yml`** via le mécanisme `include`. Elle démarre donc automatiquement avec le reste du projet, sans installation séparée : la commande `docker-compose up -d` lance l'API, MinIO **et** Signoz ensemble.
 
-L'API tourne avec ou sans Signoz. Pour activer la visualisation :
+### Visualiser les traces
 
-```bash
-# Lancer Signoz (stack officielle séparée)
-git clone -b main https://github.com/SigNoz/signoz.git
-cd signoz/deploy/docker
-docker compose up -d
+L'interface Signoz est accessible sur `http://localhost:8080`.
 
-# Connecter l'API
-docker network connect signoz-net arteci-api
-```
+Au tout premier lancement, Signoz demande de **créer un compte administrateur** (email, nom, mot de passe). Cette étape est nécessaire : elle initialise l'organisation interne de Signoz, sans laquelle le collecteur ne peut pas enregistrer les traces. Une fois le compte créé, lancez un traitement `POST /processDate`, puis ouvrez la section **Traces** : la trace `POST /processDate` y apparaît avec le détail de ses cinq étapes et leurs durées.
 
-Interface : http://localhost:8080, section **Traces**.
 
-Signoz n'est pas fusionné dans le `docker-compose` principal — ça évite d'embarquer une stack tierce complexe dans un projet qui n'en a pas besoin par défaut.
-
----
 
 ## Tests
 
@@ -262,7 +255,7 @@ MinIO démarre vide dans le cluster. On ouvre un accès à sa console via un por
 kubectl port-forward service/minio-service 9001:9001
 ```
 
-Sur `http://localhost:9001` (identifiants `minioadmin` / `minioadmin`), créer les buckets `raw` et `processeddata`, puis déposer un fichier CSV dans `raw`.
+Sur `http://localhost:9001` (identifiants `minioadmin` / `minioadmin`), créer les buckets `raw` et `processeddata`, puis déposer un fichier CSV dans `processeddata`.
 
 ### 4. Accéder à l'API
 
@@ -281,12 +274,12 @@ L'API est alors accessible sur `http://localhost:8001`.
 curl http://localhost:8001/health
 
 # Lecture depuis MinIO
-curl "http://localhost:8001/columns?bucket=raw&file=mon_fichier.csv"
+curl "http://localhost:8001/columns?bucket=processeddata&file=mon_fichier.csv"
 
-# Traitement complet (lecture + normalisation + écriture)
+# Traitement complet (lecture + normalisation + écrasement en place)
 curl -X POST http://localhost:8001/processDate \
   -H "Content-Type: application/json" \
-  -d '{"bucket":"raw","file":"mon_fichier.csv","date_columns":["DATE_CREATION"],"date_formats":["MDY"]}'
+  -d '{"bucket":"processeddata","file":"mon_fichier.csv","date_columns":["DATE_CREATION"],"date_formats":["MDY"]}'
 ```
 
 Si les trois répondent correctement, le déploiement est complet et fonctionnel.
@@ -302,9 +295,9 @@ Ces manifests fonctionnent à l'identique sur un cluster local (Docker Desktop, 
 
 **Traitement in-memory** : validé sur le fichier de 931 Mo avec un pic à 1.7 Go. Pour des fichiers nettement plus volumineux, un traitement par chunks serait nécessaire — l'architecture le permettrait sans refonte majeure.
 
-**Signoz séparé** : deux commandes supplémentaires pour l'activer, c'est documenté plus haut. Le choix est intentionnel.
+****Création du compte Signoz** : au premier lancement, il faut créer un compte sur l'interface Signoz (`http://localhost:8080`) pour activer la collecte des traces. Cette étape est documentée dans la section Observabilité.
 
-**Dépôt initial dans `raw`** : manuel via la console MinIO (dans un vrai flux produit, ce serait géré côté frontend).
+**Dépôt du fichier dans `processeddata`** : dans le flux réel, le fichier y est déposé par les étapes amont de la chaîne. Pour un test autonome, le dépôt se fait manuellement via la console MinIO.
 
 **Identifiants MinIO** : `minioadmin` par défaut, à changer en production.
 
