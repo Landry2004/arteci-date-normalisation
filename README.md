@@ -224,18 +224,79 @@ Image publiée : [`landry225/arteci-api`](https://hub.docker.com/r/landry225/art
 
 ## Déploiement Kubernetes
 
-Le dossier `k8s/` contient trois manifests : `configmap.yaml` (la configuration), `deployment.yaml` (le déploiement de l'API avec ses ressources) et `service.yaml` (l'exposition réseau).
+Le dossier `k8s/` contient quatre manifests :
+
+- `minio.yaml` — déploiement et service de MinIO (le stockage)
+- `configmap.yaml` — la configuration (variables d'environnement)
+- `deployment.yaml` — le déploiement de l'API avec ses ressources (4 CPU / 8 Gi)
+- `service.yaml` — l'exposition réseau de l'API
+
+L'architecture déployée reproduit celle du `docker-compose` : MinIO et l'API tournent dans le cluster, l'API communiquant avec MinIO via le service interne `minio-service`.
+
+
+
+### 1. Déployer MinIO puis l'API
+
+L'ordre est important : MinIO doit être disponible avant l'API.
 
 ```bash
+kubectl apply -f k8s/minio.yaml
 kubectl apply -f k8s/configmap.yaml
 kubectl apply -f k8s/deployment.yaml
 kubectl apply -f k8s/service.yaml
-
-kubectl get pods
-kubectl get service
 ```
 
-Les ressources allouées dans `deployment.yaml` sont 4 CPU / 8 Gi. Les manifests fonctionnent à l'identique sur un cluster local (Docker Desktop, kind) ou cloud (EKS, GKE, AKS) — sur cloud, le `type: LoadBalancer` génère une adresse publique automatiquement.
+### 2. Vérifier que les pods tournent
+
+```bash
+kubectl get pods
+```
+
+Les deux pods `arteci-api` et `minio` doivent être en statut `Running`.
+
+### 3. Créer les buckets et déposer un fichier
+
+MinIO démarre vide dans le cluster. On ouvre un accès à sa console via un port-forward :
+
+```bash
+kubectl port-forward service/minio-service 9001:9001
+```
+
+Sur `http://localhost:9001` (identifiants `minioadmin` / `minioadmin`), créer les buckets `raw` et `processeddata`, puis déposer un fichier CSV dans `raw`.
+
+### 4. Accéder à l'API
+
+Dans un autre terminal, ouvrir un port-forward vers l'API :
+
+```bash
+kubectl port-forward service/arteci-api-service 8001:8000
+```
+
+L'API est alors accessible sur `http://localhost:8001`.
+
+### 5. Vérifier le déploiement
+
+```bash
+# Santé de l'API
+curl http://localhost:8001/health
+
+# Lecture depuis MinIO
+curl "http://localhost:8001/columns?bucket=raw&file=mon_fichier.csv"
+
+# Traitement complet (lecture + normalisation + écriture)
+curl -X POST http://localhost:8001/processDate \
+  -H "Content-Type: application/json" \
+  -d '{"bucket":"raw","file":"mon_fichier.csv","date_columns":["DATE_CREATION"],"date_formats":["MDY"]}'
+```
+
+Si les trois répondent correctement, le déploiement est complet et fonctionnel.
+
+### Portabilité
+
+Ces manifests fonctionnent à l'identique sur un cluster local (Docker Desktop, kind) ou sur un cluster cloud (AWS EKS, Google GKE, Azure AKS). Sur un environnement cloud, le `type: LoadBalancer` du service de l'API génère automatiquement une adresse publique, ce qui dispense du port-forward.
+
+> **Note** : dans le cluster, MinIO utilise un stockage éphémère (`emptyDir`). Pour un usage en production, il faudrait un volume persistant (PersistentVolumeClaim) afin de conserver les données entre redémarrages.
+
 
 ## Limites connues
 

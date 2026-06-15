@@ -1,3 +1,7 @@
+# Inclut toute la stack Signoz (observabilité)
+include:
+  - signoz-stack/docker/docker-compose.yaml
+
 services:
   minio:
     image: minio/minio:latest
@@ -28,7 +32,9 @@ services:
 
   api:
     image: landry225/arteci-api:latest
-  # build: .
+    # Alternative : pour reconstruire depuis le source,
+    # commenter "image" et décommenter "build" :
+    # build: .
     container_name: arteci-api
     ports:
       - "8001:8000"
@@ -39,9 +45,13 @@ services:
       MINIO_SECURE: "false"
       MINIO_PROCESSED_BUCKET: processeddata
       OTEL_EXPORTER_OTLP_ENDPOINT: http://signoz-otel-collector:4317
+      OTEL_LOG_LEVEL: debug
     depends_on:
       minio-init:
         condition: service_completed_successfully
+    networks:
+      - default
+      - signoz-net
     deploy:
       resources:
         limits:
@@ -53,3 +63,7 @@ services:
 
 volumes:
   minio_data:
+
+networks:
+  signoz-net:
+    name: signoz-net
