@@ -8,7 +8,6 @@ from opentelemetry import trace
 from src.core.minio_client import file_exists, download_to_file, upload_from_file
 from src.core.csv_utils import detecter_separateur
 from src.core.date_processor import normalize_column
-from src.config import BUCKET_PROCESSED
 
 TMP_DIR = tempfile.gettempdir()
 
@@ -70,12 +69,12 @@ def process_date(
             span.set_attribute("colonnes.traitees", len(date_columns))
             logger.info(f"Normalisation terminée | colonnes={len(date_columns)}")
 
-        # SPAN 3 : Écriture dans MinIO
+        # SPAN 3 : Écriture dans MinIO (écrasement en place, dans le bucket reçu)
         with tracer.start_as_current_span("ecriture_minio") as span:
             df.write_csv(chemin_output, separator=separateur)
-            upload_from_file(BUCKET_PROCESSED, file, chemin_output)
-            span.set_attribute("fichier.destination", BUCKET_PROCESSED)
-            logger.info(f"Fichier écrit | bucket={BUCKET_PROCESSED} | file={file}")
+            upload_from_file(bucket, file, chemin_output)
+            span.set_attribute("fichier.destination", bucket)
+            logger.info(f"Fichier écrit | bucket={bucket} | file={file}")
 
         # Aperçu des 100 premières lignes
         preview = df.head(100).to_dicts()
