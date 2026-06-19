@@ -55,18 +55,19 @@ L'application est empaquetée avec **Docker**, sur une base Alpine afin d'obteni
 
 ### Pourquoi Polars et pas Pandas
 
-Ce n'est pas une préférence — c'est une mesure. Benchmark sur le fichier "lst_of_users_anon_2.csv", même machine, même données :
+Ce n'est pas une préférence, c'est une mesure. J'ai comparé les deux outils sur le même fichier (`lst_of_users_anon_2.csv`), même machine, mêmes données :
 
 | Outil  | Temps     |
 |--------|-----------|
 | Pandas | 51.45s    |
 | Polars | **0.63s** |
 
-Polars est 81x plus rapide ici parce qu'il parallélise nativement sur les cœurs disponibles et utilise Apache Arrow en mémoire. Pandas est mono-threadé. Sur le fichier de 931 Mo, Pandas aurait probablement crashé en OOM avant de finir.
+Polars est environ 80x plus rapide. La raison principale : Polars utilise **tous les cœurs du processeur en même temps**, alors que Pandas n'en utilise qu'un seul. Polars organise aussi les données en mémoire de façon plus efficace.
 
-Le traitement utilise `read_csv` / `write_csv` en mémoire (pas de streaming). Ce choix est appuyé par la mesure : sur 931 Mo, le pic mémoire observé est 1.7 Go sur 8 Go disponibles — la marge est suffisante.
+Sur le plus gros fichier (931 Mo), Pandas aurait probablement planté par manque de mémoire, là où Polars reste stable.
 
----
+Le traitement charge le fichier entièrement en mémoire (lecture et écriture d'un coup, pas morceau par morceau). C'est un choix sûr : même sur 931 Mo, le maximum de mémoire utilisée est 1.7 Go sur 8 Go disponibles; il reste largement de la marge.
+
 
 ## Performances
 
