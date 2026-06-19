@@ -15,14 +15,14 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# ── AJOUT 2 : Autoriser les appels depuis un navigateur (CORS) ──
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],          # autorise toutes les origines
-    allow_credentials=True,
-    allow_methods=["*"],          # autorise toutes les méthodes (GET, POST...)
-    allow_headers=["*"],          # autorise tous les en-têtes
-)
+# ── TEST : CORS retiré temporairement ──
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=["*"],
+#     allow_credentials=True,
+#     allow_methods=["*"],
+#     allow_headers=["*"],
+# )
 
 # Instrumentation automatique de FastAPI (trace toutes les requêtes HTTP)
 FastAPIInstrumentor.instrument_app(app)
