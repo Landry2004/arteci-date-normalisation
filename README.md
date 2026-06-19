@@ -36,22 +36,22 @@ Le principe d'écriture est : **quel que soit le bucket reçu en paramètre, le 
 
 - Formats DMY (français), MDY (anglais) et ISO, reconnus automatiquement
 - Formats mixtes par ligne : si une date est incohérente avec le format déclaré (ex. mois > 12 en DMY), bascule automatique vers MDY
-- Cellules invalides ou vides : conservées telles quelles, sans plantagge
+- Cellules invalides ou vides : conservées telles quelles, sans plantage
 - Erreurs explicites : 404 (fichier absent), 400 (colonne inexistante ou incohérence colonnes/formats), 500 (erreur serveur)
 
 ---
 
 ## Stack technique
 
-Le projet repose sur **Python 3.11**, choisi pour la maturité de son écosystème et la rapidité de développement qu'il permet, un atout décisif dans le cadre d'un sprint de deux semaines.
+Le projet repose sur **Python 3.11**, choisi parce qu'il dispose de nombreuses bibliothèques prêtes à l'emploi et permet de développer rapidement, un atout décisif dans le cadre d'un sprint de deux semaines.
 
-L'API est construite avec **FastAPI**, un framework moderne offrant de bonnes performances asynchrones et une documentation interactive générée automatiquement, accessible via l'endpoint `/docs`.
+L'API est construite avec **FastAPI**, un framework moderne et rapide qui génère automatiquement une documentation interactive, accessible via l'endpoint `/docs`.
 
-Le cœur du traitement de données utilise **Polars**, une bibliothèque écrite en Rust, nativement multi-threadée et reposant sur le format mémoire Apache Arrow. C'est ce composant qui assure les performances élevées du projet.
+Le cœur du traitement de données utilise **Polars**, une bibliothèque écrite en Rust qui gagne en popularité grâce à sa rapidité et son efficacité mémoire. Elle utilise tous les cœurs du processeur en même temps et repose sur le format mémoire Apache Arrow, ce qui lui permet de surpasser Pandas dans la plupart des cas. C'est ce composant qui assure les performances élevées du projet.
 
-Le stockage des fichiers est assuré par **MinIO**, une solution de stockage objet compatible avec l'API S3 d'Amazon, qui présente l'avantage de pouvoir être déployée localement très simplement.
+Le stockage des fichiers est assuré par **MinIO**, une solution de stockage objet qui présente l'avantage de pouvoir être déployée localement très simplement (et compatible S3, le standard d'Amazon).
 
-L'application est empaquetée avec **Docker**, sur une base Alpine afin d'obtenir une image finale légère et sécurisée. L'**observabilité** est assurée par OpenTelemetry pour l'instrumentation et Signoz pour la visualisation des traces et des logs structurés. Le déploiement en production s'appuie sur **Kubernetes**, et l'intégration ainsi que la livraison continues sont automatisées via **GitHub Actions**.
+L'application est empaquetée avec **Docker**, sur une base Alpine afin d'obtenir une image finale légère et sécurisée. L'**observabilité** est assurée par OpenTelemetry pour l'instrumentation et Signoz pour la visualisation des traces et des logs structurés. Le déploiement en production s'appuie sur **Kubernetes**, et l'intégration ainsi que le déploiement continus sont automatisés via **GitHub Actions**.
 
 ### Pourquoi Polars et pas Pandas
 
@@ -231,7 +231,7 @@ L'architecture déployée reproduit celle du `docker-compose` : MinIO et l'API t
 
 ### 1. Déployer MinIO puis l'API
 
-L'ordre est important : MinIO doit être disponible avant l'API.
+L'ordre est important : MinIO doit être disponible avant l'API, car l'API se connecte à MinIO dès son démarrage pour lire et écrire les fichiers. Si MinIO n'est pas prêt, l'API ne peut pas fonctionner correctement.
 
 ```bash
 kubectl apply -f k8s/minio.yaml
@@ -250,7 +250,7 @@ Les deux pods `arteci-api` et `minio` doivent être en statut `Running`.
 
 ### 3. Créer les buckets et déposer un fichier
 
-MinIO démarre vide dans le cluster. On ouvre un accès à sa console via un port-forward :
+MinIO démarre vide dans le cluster. Contrairement au `docker-compose` (où un service `minio-init` crée les buckets automatiquement), les manifests Kubernetes ne l'incluent pas — il faut donc créer les buckets manuellement. On ouvre un accès à sa console via un port-forward :
 
 ```bash
 kubectl port-forward service/minio-service 9001:9001
@@ -289,14 +289,14 @@ Si les trois répondent correctement, le déploiement est complet et fonctionnel
 
 Ces manifests fonctionnent à l'identique sur un cluster local (Docker Desktop, kind) ou sur un cluster cloud (AWS EKS, Google GKE, Azure AKS). Sur un environnement cloud, le `type: LoadBalancer` du service de l'API génère automatiquement une adresse publique, ce qui dispense du port-forward.
 
-> **Note** : dans le cluster, MinIO utilise un stockage éphémère (`emptyDir`). Pour un usage en production, il faudrait un volume persistant (PersistentVolumeClaim) afin de conserver les données entre redémarrages.
+> **Note** : dans le cluster, MinIO utilise un stockage éphémère (`emptyDir`) : les données sont perdues si le pod redémarre. C'est suffisant pour une démonstration, mais pour un usage en production il faudrait un volume persistant (PersistentVolumeClaim) afin de conserver les données entre redémarrages.
 
 
 ## Limites connues
 
-**Traitement in-memory** : validé sur le fichier de 931 Mo avec un pic à 1.7 Go. Pour des fichiers nettement plus volumineux, un traitement par chunks serait nécessaire — l'architecture le permettrait sans refonte majeure.
+**Traitement in-memory** : validé sur le fichier de 931 Mo avec un pic à 1.7 Go. Pour des fichiers nettement plus volumineux, il faudrait traiter le fichier par morceaux (au lieu de tout charger d'un coup) — l'architecture le permettrait sans refonte majeure.
 
-****Création du compte Signoz** : au premier lancement, il faut créer un compte sur l'interface Signoz (`http://localhost:8080`) pour activer la collecte des traces. Cette étape est documentée dans la section Observabilité.
+**Création du compte Signoz** : au premier lancement, il faut créer un compte sur l'interface Signoz (`http://localhost:8080`) pour activer la collecte des traces. Cette étape est documentée dans la section Observabilité.
 
 **Dépôt du fichier dans `processeddata`** : dans le flux réel, le fichier y est déposé par les étapes amont de la chaîne. Pour un test autonome, le dépôt se fait manuellement via la console MinIO.
 
