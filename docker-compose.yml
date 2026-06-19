@@ -32,9 +32,8 @@ services:
 
   api:
     image: landry225/arteci-api:latest
-    # Alternative : pour reconstruire depuis le source,
-    # commenter "image" et décommenter "build" :
-    # build: .
+
+    #build: .
     container_name: arteci-api
     ports:
       - "8001:8000"
