@@ -11,6 +11,7 @@ from src.core.process_service import process_date
 router = APIRouter()
 
 
+# Retourne la liste des colonnes d'un fichier CSV stocké dans MinIO
 @router.get("/columns", response_model=ColumnsResponse)
 def list_columns(bucket: str, file: str):
     try:
@@ -27,6 +28,7 @@ def list_columns(bucket: str, file: str):
         )
 
 
+# Normalise les colonnes date d'un CSV MinIO et retourne un aperçu des 100 premières lignes
 @router.post("/processDate", response_model=ProcessDateResponse)
 def process_date_endpoint(request: ProcessDateRequest):
     try:

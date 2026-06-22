@@ -76,13 +76,13 @@ def process_date(
             span.set_attribute("fichier.destination", bucket)
             logger.info(f"Fichier écrit | bucket={bucket} | file={file}")
 
-        # Aperçu des 100 premières lignes
         preview = df.head(100).to_dicts()
         logger.info(f"Traitement réussi | total_lignes={len(df)}")
 
         return preview
 
     finally:
+        # Nettoyage garanti des fichiers temporaires même en cas d'exception
         for chemin in (chemin_input, chemin_output):
             if os.path.exists(chemin):
                 os.remove(chemin)

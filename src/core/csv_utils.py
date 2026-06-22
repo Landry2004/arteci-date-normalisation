@@ -14,10 +14,7 @@ def detecter_separateur(chemin_fichier: str) -> str:
     with open(chemin_fichier, "r", encoding="utf-8", errors="ignore") as f:
         premiere_ligne = f.readline()
 
-    # Compter chaque séparateur candidat
     comptes = {sep: premiere_ligne.count(sep) for sep in SEPARATEURS_POSSIBLES}
-
-    # Trouver le séparateur le plus fréquent
     separateur = max(comptes, key=comptes.get)
 
     # Si aucun séparateur trouvé, défaut sur la virgule

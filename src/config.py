@@ -1,7 +1,6 @@
 import os
 
 # ─── Configuration MinIO ───────────────────────────────
-# Adresse du serveur MinIO (host:port)
 MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "localhost:9000")
 
 # Identifiants d'accès MinIO

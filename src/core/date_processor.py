@@ -3,7 +3,7 @@ import polars as pl
 # Format de sortie standard demandé par le cahier des charges
 OUTPUT_FORMAT = "%d-%m-%Y %H:%M:%S"
 
-# Formats français (jour en premier)
+# Formats français 
 FORMATS_DMY = [
     "%d/%m/%Y %H:%M:%S",
     "%d/%m/%Y",
@@ -11,7 +11,7 @@ FORMATS_DMY = [
     "%d-%m-%Y",
 ]
 
-# Formats anglais (mois en premier)
+# Formats anglais 
 FORMATS_MDY = [
     "%m/%d/%Y %H:%M:%S",
     "%m/%d/%Y",

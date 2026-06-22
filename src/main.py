@@ -1,11 +1,10 @@
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware    # ← AJOUT 1 : l'import
+from fastapi.middleware.cors import CORSMiddleware
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
 from src.core.routes import router
 from src.core.observability import setup_tracing, setup_logging
 
-# Configuration de l'observabilité au démarrage
 tracer = setup_tracing()
 logger = setup_logging()
 
@@ -27,7 +26,6 @@ app.add_middleware(
 # Instrumentation automatique de FastAPI (trace toutes les requêtes HTTP)
 FastAPIInstrumentor.instrument_app(app)
 
-# Brancher les routes
 app.include_router(router, tags=["dates"])
 
 logger.info("API ARTECI démarrée")

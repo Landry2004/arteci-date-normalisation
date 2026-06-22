@@ -35,7 +35,6 @@ def test_format_mixte_dans_meme_colonne():
 
 
 def test_format_iso():
-    # Format ISO (année en premier)
     resultat = _normaliser(["2024-03-15"], "DMY")
     assert resultat[0] == "15-03-2024 00:00:00"
 
