@@ -199,8 +199,9 @@ Au tout premier lancement, Signoz demande de **créer un compte administrateur**
 8 tests unitaires couvrant la logique de normalisation : DMY, MDY, bascule de format, formats mixtes, ISO, cellule invalide, cellule vide, cas complet.
 
 ```bash
-pip install -r requirements.txt pytest
-pytest tests/ -v
+pip install -r requirements.txt
+pip install pytest
+python -m pytest tests/ -v
 ```
 
 ---
