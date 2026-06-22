@@ -299,8 +299,6 @@ Ces manifests fonctionnent à l'identique sur un cluster local (Docker Desktop, 
 
 **Création du compte Signoz** : au premier lancement, il faut créer un compte sur l'interface Signoz (`http://localhost:8080`) pour activer la collecte des traces. Cette étape est documentée dans la section Observabilité.
 
-**Dépôt du fichier dans `processeddata`** : dans le flux réel, le fichier y est déposé par les étapes amont de la chaîne. Pour un test autonome, le dépôt se fait manuellement via la console MinIO.
-
 **Identifiants MinIO** : `minioadmin` par défaut, à changer en production.
 
 ---
